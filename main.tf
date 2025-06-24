@@ -2,6 +2,16 @@ provider "aws" {
   region = var.region
 }
 
+# Create a unique S3 bucket for templates
+resource "random_id" "bucket_suffix" {
+  byte_length = 4
+}
+
+resource "aws_s3_bucket" "template_bucket" {
+  bucket = "service-catalog-templates-${random_id.bucket_suffix.hex}"
+  acl    = "private"
+}
+
 ## 1. Create Service Catalog Portfolio
 resource "aws_servicecatalog_portfolio" "web_app_portfolio" {
   name          = "WebApplicationPortfolio"
@@ -37,9 +47,10 @@ data "template_file" "web_app_template" {
   template = file("${path.module}/ec2_instance-cft.yaml")
 }
 
-resource "aws_s3_bucket_object" "web_app_template" {
-  bucket = "your-template-bucket"  # Replace with your bucket name
-  key    = "templates/ec2_instance-cft.yaml"
+# Updated to use aws_s3_object instead of deprecated aws_s3_bucket_object
+resource "aws_s3_object" "web_app_template" {
+  bucket  = aws_s3_bucket.template_bucket.bucket
+  key     = "templates/ec2_instance-cft.yaml"
   content = data.template_file.web_app_template.rendered
 }
 
@@ -53,7 +64,7 @@ resource "aws_servicecatalog_product" "web_app_product" {
   provisioning_artifact_parameters {
     description          = "Initial version"
     name                 = "v1.0"
-    template_url         = "https://${aws_s3_bucket_object.web_app_template.bucket}.s3.amazonaws.com/${aws_s3_bucket_object.web_app_template.key}"
+    template_url         = "https://${aws_s3_bucket.template_bucket.bucket_regional_domain_name}/${aws_s3_object.web_app_template.key}"
     type                 = "CLOUD_FORMATION_TEMPLATE"
   }
 
