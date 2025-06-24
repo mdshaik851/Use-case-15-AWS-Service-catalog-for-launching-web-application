@@ -9,9 +9,9 @@ resource "aws_s3_bucket" "catalog_bucket" {
 
 resource "aws_s3_bucket_object" "template" {
   bucket = aws_s3_bucket.catalog_bucket.id
-  key    = "template.yaml"
-  source = "${path.module}/template.yaml"
-  etag   = filemd5("${path.module}/template.yaml")
+  key    = "ec2_instance-cft.yaml"
+  source = "${path.module}/ec2_instance-cft.yaml"
+  etag   = filemd5("${path.module}/ec2_instance-cft.yaml")
 }
 
 resource "aws_servicecatalog_portfolio" "webapp_portfolio" {

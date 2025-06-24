@@ -1,4 +1,4 @@
-name: Use case 15: AWS Service-catalog for launching web application
+name: AWS Service-catalog for launching web application
 
 on:
   pull_request:

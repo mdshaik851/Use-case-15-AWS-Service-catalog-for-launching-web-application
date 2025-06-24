@@ -6,8 +6,7 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: t2.micro
-      ImageId: ami-0c02fb55956c7d316  # Amazon Linux 2 AMI (update if needed)
-      KeyName: my-key                 # Replace with your EC2 key pair
+      ImageId: ami-0cbad6815f3a09a6d
       SecurityGroups:
         - !Ref WebAppSG
       UserData:
