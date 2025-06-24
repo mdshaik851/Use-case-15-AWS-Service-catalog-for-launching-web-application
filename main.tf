@@ -1,17 +1,21 @@
 provider "aws" {
-  region = var.region
+  region = "us-west-1"
 }
 
 resource "aws_s3_bucket" "catalog_bucket" {
-  bucket = "service-catalog-webapp-template-bucket"
-  force_destroy = false
+  bucket        = "service-catalog-webapp-template-bucket-${random_id.suffix.hex}"
+  force_destroy = true
 }
 
-resource "aws_s3_bucket_object" "template" {
+resource "random_id" "suffix" {
+  byte_length = 4
+}
+
+resource "aws_s3_object" "template" {
   bucket = aws_s3_bucket.catalog_bucket.id
-  key    = "ec2_instance-cft.yaml"
-  source = "${path.module}/ec2_instance-cft.yaml"
-  etag   = filemd5("${path.module}/ec2_instance-cft.yaml")
+  key    = "template.yaml"
+  source = "${path.module}/template.yaml"
+  etag   = filemd5("${path.module}/template.yaml")
 }
 
 resource "aws_servicecatalog_portfolio" "webapp_portfolio" {
@@ -21,14 +25,15 @@ resource "aws_servicecatalog_portfolio" "webapp_portfolio" {
 }
 
 resource "aws_servicecatalog_product" "webapp_product" {
-  name          = "WebAppProduct"
-  owner         = "IT Admin"
-  product_type  = "CLOUD_FORMATION_TEMPLATE"
+  name        = "WebAppProduct"
+  owner       = "IT Admin"
+  description = "EC2 based web app"
+
   provisioning_artifact_parameters {
-    name          = "v1"
-    type          = "CLOUD_FORMATION_TEMPLATE"
-    description   = "Initial version"
-    template_url  = "https://${aws_s3_bucket.catalog_bucket.bucket}.s3.amazonaws.com/${aws_s3_bucket_object.template.key}"
+    name         = "v1"
+    description  = "Initial version"
+    template_url = "https://${aws_s3_bucket.catalog_bucket.bucket}.s3.amazonaws.com/${aws_s3_object.template.key}"
+    type         = "CLOUD_FORMATION_TEMPLATE"
   }
 }
 
@@ -36,6 +41,7 @@ resource "aws_servicecatalog_portfolio_product_association" "association" {
   portfolio_id = aws_servicecatalog_portfolio.webapp_portfolio.id
   product_id   = aws_servicecatalog_product.webapp_product.id
 }
+
 
 resource "aws_iam_role" "launch_role" {
   name = "ServiceCatalogLaunchRole"
