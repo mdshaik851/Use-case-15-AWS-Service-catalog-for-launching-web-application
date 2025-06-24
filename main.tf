@@ -19,7 +19,7 @@ resource "aws_servicecatalog_portfolio" "web_app_portfolio" {
   provider_name = "IT Department"
 }
 
-## 2. Create IAM Role for Launch Constraints
+## 2. Create IAM Role for Launch Constraints with proper permissions
 resource "aws_iam_role" "launch_constraint_role" {
   name = "SCWebAppLaunchRole"
 
@@ -32,14 +32,51 @@ resource "aws_iam_role" "launch_constraint_role" {
         Principal = {
           Service = "servicecatalog.amazonaws.com"
         }
+      },
+      {
+        Action = "sts:AssumeRole",
+        Effect = "Allow",
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
       }
     ]
   })
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_iam_role_policy_attachment" "launch_constraint_policy" {
   role       = aws_iam_role.launch_constraint_role.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}
+
+# Add additional permissions needed by Service Catalog
+resource "aws_iam_role_policy" "service_catalog_policy" {
+  name = "ServiceCatalogAdditionalPermissions"
+  role = aws_iam_role.launch_constraint_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action = [
+          "s3:GetObject",
+          "s3:GetObjectVersion"
+        ],
+        Effect   = "Allow",
+        Resource = "${aws_s3_bucket.template_bucket.arn}/*"
+      },
+      {
+        Action = [
+          "cloudformation:*",
+          "servicecatalog:*"
+        ],
+        Effect   = "Allow",
+        Resource = "*"
+      }
+    ]
+  })
 }
 
 ## 3. Create CloudFormation Template for Web App
@@ -47,7 +84,6 @@ data "template_file" "web_app_template" {
   template = file("${path.module}/ec2_instance-cft.yaml")
 }
 
-# Updated to use aws_s3_object instead of deprecated aws_s3_bucket_object
 resource "aws_s3_object" "web_app_template" {
   bucket  = aws_s3_bucket.template_bucket.bucket
   key     = "templates/ec2_instance-cft.yaml"
@@ -89,10 +125,15 @@ resource "aws_servicecatalog_constraint" "web_app_launch_constraint" {
   parameters = jsonencode({
     "RoleArn" : aws_iam_role.launch_constraint_role.arn
   })
+
+  depends_on = [
+    aws_iam_role_policy.service_catalog_policy,
+    aws_iam_role_policy_attachment.launch_constraint_policy
+  ]
 }
 
 ## 7. Grant Access to Users/Groups
 resource "aws_servicecatalog_principal_portfolio_association" "developer_access" {
   portfolio_id  = aws_servicecatalog_portfolio.web_app_portfolio.id
-  principal_arn = "arn:aws:iam::994466158061:user/Shaik" # Replace with your group
+  principal_arn = "arn:aws:iam::994466158061:user/Shaik"
 }
