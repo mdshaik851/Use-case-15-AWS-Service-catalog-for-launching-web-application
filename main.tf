@@ -9,7 +9,6 @@ resource "random_id" "bucket_suffix" {
 
 resource "aws_s3_bucket" "template_bucket" {
   bucket = "service-catalog-templates-${random_id.bucket_suffix.hex}"
-  acl    = "private"
 }
 
 ## 1. Create Service Catalog Portfolio
